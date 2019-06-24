@@ -1,5 +1,6 @@
 import { S3 } from 'aws-sdk';
 import { UploadTarball, ReadTarball } from '@verdaccio/streams';
+import { HEADERS, HTTP_STATUS } from '@verdaccio/commons-api';
 import { Callback, Logger, Package, ILocalPackageManager } from '@verdaccio/types';
 import { is404Error, convertS3Error, create409Error } from './s3Errors';
 import { deleteKeyPrefix } from './deleteKeyPrefix';
@@ -8,24 +9,26 @@ import { S3Config } from './config';
 const pkgFileName = 'package.json';
 
 export default class S3PackageManager implements ILocalPackageManager {
-  config: S3Config;
-  logger: Logger;
-  packageName: string;
-  s3: S3;
-  _localData: any;
+  public config: S3Config;
+  public logger: Logger;
+  private packageName: string;
+  private s3: S3;
+  private _localData: any;
 
-  constructor(config: S3Config, packageName: string, logger: Logger) {
+  public constructor(config: S3Config, packageName: string, logger: Logger) {
     this.config = config;
     this.packageName = packageName;
     this.logger = logger;
     this.s3 = new S3({
       endpoint: this.config.endpoint,
       region: this.config.region,
-      s3ForcePathStyle: this.config.s3ForcePathStyle
+      s3ForcePathStyle: this.config.s3ForcePathStyle,
+      accessKeyId: this.config.accessKeyId,
+      secretAccessKey: this.config.secretAccessKey
     });
   }
 
-  updatePackage(name: string, updateHandler: Callback, onWrite: Callback, transformPackage: Function, onEnd: Callback) {
+  public updatePackage(name: string, updateHandler: Callback, onWrite: Callback, transformPackage: Function, onEnd: Callback): void {
     (async () => {
       try {
         const json = await this._getData();
@@ -42,7 +45,7 @@ export default class S3PackageManager implements ILocalPackageManager {
     })();
   }
 
-  async _getData(): Promise<any> {
+  private async _getData(): Promise<any> {
     return await new Promise((resolve, reject) => {
       this.s3.getObject(
         {
@@ -68,7 +71,7 @@ export default class S3PackageManager implements ILocalPackageManager {
     });
   }
 
-  deletePackage(fileName: string, callback: Callback) {
+  public deletePackage(fileName: string, callback: Callback): void {
     this.s3.deleteObject(
       {
         Bucket: this.config.bucket,
@@ -84,7 +87,7 @@ export default class S3PackageManager implements ILocalPackageManager {
     );
   }
 
-  removePackage(callback: Callback): void {
+  public removePackage(callback: Callback): void {
     deleteKeyPrefix(
       this.s3,
       {
@@ -96,7 +99,7 @@ export default class S3PackageManager implements ILocalPackageManager {
     );
   }
 
-  createPackage(name: string, value: Package, callback: Function) {
+  public createPackage(name: string, value: Package, callback: Function): void {
     this.s3.headObject(
       {
         Bucket: this.config.bucket,
@@ -118,7 +121,7 @@ export default class S3PackageManager implements ILocalPackageManager {
     );
   }
 
-  savePackage(name: string, value: Package, callback: Function) {
+  public savePackage(name: string, value: Package, callback: Function): void {
     this.s3.putObject(
       {
         Body: JSON.stringify(value, null, '  '),
@@ -130,8 +133,8 @@ export default class S3PackageManager implements ILocalPackageManager {
     );
   }
 
-  readPackage(name: string, callback: Function) {
-    (async () => {
+  public readPackage(name: string, callback: Function): void {
+    (async (): Promise<void> => {
       try {
         const data = await this._getData();
         callback(null, data);
@@ -141,7 +144,7 @@ export default class S3PackageManager implements ILocalPackageManager {
     })();
   }
 
-  writeTarball(name: string) {
+  public writeTarball(name: string): any {
     const uploadStream = new UploadTarball({});
 
     let streamEnded = 0;
@@ -183,7 +186,7 @@ export default class S3PackageManager implements ILocalPackageManager {
             });
 
             uploadStream.done = () => {
-              const onEnd = async () => {
+              const onEnd = async function(): Promise<void> {
                 try {
                   await promise;
                   uploadStream.emit('success');
@@ -218,7 +221,7 @@ export default class S3PackageManager implements ILocalPackageManager {
     return uploadStream;
   }
 
-  readTarball(name: string) {
+  public readTarball(name: string): any {
     const readTarballStream = new ReadTarball({});
 
     const request = this.s3.getObject({
@@ -236,9 +239,9 @@ export default class S3PackageManager implements ILocalPackageManager {
         // verdaccio force garbage collects a stream on 404, so we can't emit more
         // than one error or it'll fail
         // https://github.com/verdaccio/verdaccio/blob/c1bc261/src/lib/storage.js#L178
-        if (statusCode !== 404) {
-          if (headers['content-length']) {
-            const contentLength = parseInt(headers['content-length'], 10);
+        if (statusCode !== HTTP_STATUS.NOT_FOUND) {
+          if (headers[HEADERS.CONTENT_LENGTH]) {
+            const contentLength = parseInt(headers[HEADERS.CONTENT_LENGTH], 10);
 
             // not sure this is necessary
             if (headersSent) {
@@ -247,7 +250,7 @@ export default class S3PackageManager implements ILocalPackageManager {
 
             headersSent = true;
 
-            readTarballStream.emit('content-length', contentLength);
+            readTarballStream.emit(HEADERS.CONTENT_LENGTH, contentLength);
             // we know there's content, so open the stream
             readTarballStream.emit('open');
           }
