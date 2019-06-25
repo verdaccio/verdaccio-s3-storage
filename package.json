@@ -1,6 +1,6 @@
 {
   "name": "verdaccio-aws-s3-storage",
-  "version": "0.0.1-beta-3",
+  "version": "0.0.1",
   "description": "aws s3 storage implementation",
   "repository": {
     "type": "git",
@@ -24,7 +24,7 @@
     "coverage:publish": "codecov"
   },
   "dependencies": {
-    "@verdaccio/commons-api": "^0.0.1",
+    "@verdaccio/commons-api": "^0.0.2",
     "@verdaccio/streams": "2.0.0",
     "aws-sdk": "2.480.0"
   },
