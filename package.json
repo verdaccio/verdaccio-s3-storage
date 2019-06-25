@@ -24,8 +24,8 @@
     "coverage:publish": "codecov"
   },
   "dependencies": {
-    "@verdaccio/commons-api": "^0.0.2",
-    "@verdaccio/streams": "2.0.0",
+    "@verdaccio/commons-api": "^0.1.0",
+    "@verdaccio/streams": "^2.0.0",
     "aws-sdk": "2.480.0"
   },
   "devDependencies": {
