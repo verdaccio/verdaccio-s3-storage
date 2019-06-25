@@ -164,6 +164,7 @@ export default class S3Database implements IPluginStorage<S3Config> {
   // returns an instance of a class managing the storage for a single package
   public getPackageStorage(packageName: string): S3PackageManager {
     this.logger.debug({ packageName }, 's3: [getPackageStorage] @{packageName}');
+
     return new S3PackageManager(this.config, packageName, this.logger);
   }
 
